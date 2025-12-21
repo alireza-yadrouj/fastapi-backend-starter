@@ -1,8 +1,8 @@
 from database import get_connection
-from schemas.case import CaseCreate
+from schemas.case import CaseCreate , CaseResponse , CaseUpdate
 
 
-def get_all_cases():
+def get_all_cases() -> list[CaseResponse]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM cases")
@@ -10,7 +10,7 @@ def get_all_cases():
     conn.close()
     return [dict(row)for row in rows]
 
-def create_case(case:CaseCreate):
+def create_case(case:CaseCreate) -> None:
     conn = get_connection()
     cursor = conn.cursor()
     query = """
@@ -22,7 +22,7 @@ def create_case(case:CaseCreate):
     conn.close()
 
 
-def delete_case(case_id):
+def delete_case(case_id: int) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
     query = """
@@ -35,7 +35,7 @@ def delete_case(case_id):
 
     return deleted > 0
 
-def update_case(case_id: int, data: dict) -> bool:
+def update_case(case_id: int, data: CaseUpdate) -> bool:
     if not data:
         return False
 
@@ -65,3 +65,5 @@ def update_case(case_id: int, data: dict) -> bool:
     conn.close()
 
     return updated > 0
+
+
