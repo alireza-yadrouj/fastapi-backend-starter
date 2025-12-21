@@ -21,3 +21,47 @@ def create_case(case:CaseCreate):
     conn.commit()
     conn.close()
 
+
+def delete_case(case_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = """
+    DELETE FROM cases WHERE id = ?
+    """
+    cursor.execute(query , (case_id,))
+    conn.commit()
+    deleted = cursor.rowcount
+    conn.close()
+
+    return deleted > 0
+
+def update_case(case_id: int, data: dict) -> bool:
+    if not data:
+        return False
+
+    fields = []
+    values = []
+
+    for key, value in data.items():
+        fields.append(f"{key} = ?")
+        values.append(value)
+
+    values.append(case_id)
+
+    query = f"""
+    UPDATE cases
+    SET {", ".join(fields)}
+    WHERE id = ?
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(query, tuple(values))
+    conn.commit()
+
+    updated = cursor.rowcount
+
+    conn.close()
+
+    return updated > 0
