@@ -6,7 +6,7 @@ from services.case_service import delete_case_service , update_case_service , fi
 from repositories.user_repository import get_user_by_username, create_user
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm , OAuth2PasswordBearer
-from core.security import pwd_context,  create_access_token
+from core.security import pwd_context,  create_access_token , get_current_user
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -15,7 +15,8 @@ app = FastAPI()
 @app.get("/cases", response_model=list[CaseResponse])
 def get_cases_endpoint(
     title : str | None = Query(default=None),
-    description: str | None = Query(default=None)
+    description: str | None = Query(default=None),
+    current_user: str = Depends(get_current_user)
 ):
     
     """
@@ -28,16 +29,26 @@ def get_cases_endpoint(
 
 
 @app.post("/cases" , status_code=201)
-def create_case_endpoint(case:CaseCreate):
+def create_case_endpoint(
+    case:CaseCreate ,
+    current_user: str = Depends(get_current_user)
+):
     create_case(case)
     return {"message" : "case created"}
 
 @app.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_case_endpoint(case_id: int):
+def delete_case_endpoint(
+    case_id: int,
+    current_user: str = Depends(get_current_user)
+):
     delete_case_service(case_id)
 
 @app.patch("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
-def update_case_endpoint(case_id: int, case: CaseUpdate):
+def update_case_endpoint(
+    case_id: int,
+    case: CaseUpdate,
+    current_user: str = Depends(get_current_user)
+):
     data = case.dict(exclude_none=True)
     update_case_service(case_id, data)
 
