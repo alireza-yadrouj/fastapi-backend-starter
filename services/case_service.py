@@ -1,52 +1,43 @@
 from fastapi import HTTPException
-from repositories.case_repository import delete_case , update_case , get_cases_by_owner
+from repositories.case_repository import delete_case, update_case, get_cases_by_owner, delete_case_admin, update_case_admin, get_all_cases
 
 
-def delete_case_service(case_id: int , owner_username : str) -> None:
-    deleted = delete_case(case_id , owner_username)
-    """
-    Deletes a case by its ID.
-
-    :param case_id: ID of the case to delete
-    :return: None
-    :raises HTTPException: If case is not found
-    """
+def delete_case_service(case_id: int , owner_username : str , role : str) -> None:
+    
+    if role =="admin":
+        deleted = delete_case_admin(case_id)
+    else:
+        deleted = delete_case(case_id , owner_username)
+    
     if not deleted:
         raise HTTPException(
-            status_code=404,
-            detail="Case not found"
+            status_code=404 if role != "admin" else 404,
+            detail="Case not found or not allowed."
         )
 
-def update_case_service(case_id: int,owner_username : str, data: dict ) -> None:
-    updated = update_case(case_id, data , owner_username)
-    """
-    Updates a case by its ID.
-
-    :param case_id: ID of the case to update
-    :param data: Case data to update (optional fields)
-    :return: None
-    :raises HTTPException: If the case is not found
-    """
+def update_case_service(case_id: int,owner_username : str, data: dict, role:str ) -> None:
+    if role == "admin":
+        updated = update_case_admin(case_id, data)
+    else:
+        updated = update_case(case_id, data , owner_username)
+    
     if not updated:
         raise HTTPException(
             status_code=403,
-            detail="Not allowed or case not found / no fields to update"
+            detail="Not allowed or case not found "
         )
 
 def filter_cases(
         owner_username : str ,
+        role : str,
         title:str|None = None , 
         description : str |None = None,
 ):
-    """
-    Filter cases based on optional criteria.
-
-    :parm title:filter cases containing this title
-    :param description: filter cases containing this description
-    :return: list of filtered cases
-    """
-
-    cases = get_cases_by_owner(owner_username)
+    
+    if role == "admin":
+        cases = get_all_cases()
+    else:
+        cases = get_cases_by_owner(owner_username)
     
     if title:
         cases = _filter_by_title(cases, title)
@@ -58,9 +49,7 @@ def filter_cases(
 
 
 def _filter_by_title(cases: list, title: str) -> list:
-    """
-    Filter cases by title.
-    """
+   
     return [
         case for case in cases
         if title.lower() in case["title"].lower()
@@ -68,10 +57,9 @@ def _filter_by_title(cases: list, title: str) -> list:
 
 
 def _filter_by_description(cases: list, description: str) -> list:
-    """
-    Filter cases by description.
-    """
+    
     return [
         case for case in cases
         if description.lower() in case["description"].lower()
     ]
+
