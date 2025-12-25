@@ -32,6 +32,10 @@ def filter_cases(
         role : str,
         title:str|None = None , 
         description : str |None = None,
+        page:int =1,
+        page_size:int = 10,
+        sort_by:str = "title",
+        sort_order: str = "asc", 
 ):
     
     if role == "admin":
@@ -39,13 +43,22 @@ def filter_cases(
     else:
         cases = get_cases_by_owner(owner_username)
     
-    if title:
+    if title:                                       #filter by title
         cases = _filter_by_title(cases, title)
 
-    if description:
+    if description:                                 #filter by description
         cases = _filter_by_description(cases, description)
 
-    return cases
+    total = len(cases)
+
+    if sort_by in ["title", "description"]:          # sort by valid fiels
+        cases.sort(key=lambda x:x.get(sort_by, ""), reverse = (sort_order=="desc"))
+
+    start = (page -1)*page_size                      #Apply pagination
+    end = start + page_size
+    paginated_cases = cases[start:end]
+
+    return paginated_cases , total
 
 
 def _filter_by_title(cases: list, title: str) -> list:

@@ -1,7 +1,7 @@
 from fastapi import FastAPI , status , Query , HTTPException , Depends
 from repositories.case_repository import create_case 
 from schemas.user import  UserCreate , UserResponse, CurrentUser
-from schemas.case import CaseCreate , CaseResponse , CaseUpdate
+from schemas.case import CaseCreate, CaseUpdate, PaginatedCaseResponse, CaseSortFields, SortOrder
 from services.case_service import delete_case_service , update_case_service , filter_cases
 from repositories.user_repository import get_user_by_username, create_user
 from fastapi.security import OAuth2PasswordRequestForm 
@@ -9,20 +9,34 @@ from core.security import pwd_context,  create_access_token , get_current_user
 
 app = FastAPI()
 
-@app.get("/cases", response_model=list[CaseResponse])
+@app.get("/cases", response_model=PaginatedCaseResponse)
 def get_cases_endpoint(
     title : str | None = Query(default=None),
     description: str | None = Query(default=None),
+    page:int = Query(default=1, ge=1, description="page number"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Number of items per page"),
+    sort_by:CaseSortFields = Query(default=CaseSortFields.title),
+    sort_order:SortOrder = Query(default=SortOrder.asc),
     current_user: CurrentUser = Depends(get_current_user)
 ):
-    
-    
-    return filter_cases(
+    items, total = filter_cases(
         title=title,
-        description=description ,
-        owner_username = current_user.username,
-        role = current_user.role
-    )
+        description=description,
+        owner_username=current_user.username,
+        role=current_user.role,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order
+        )
+    
+    return {
+        "items" : items,
+        "page": page,
+        "page_size": page_size,
+        "total": total
+    }
+     
 
 @app.post("/cases" , status_code=201)
 def create_case_endpoint(

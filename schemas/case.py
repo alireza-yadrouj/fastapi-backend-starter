@@ -1,5 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from enum import Enum
+
 
 class CaseCreate(BaseModel):
     title : str
@@ -15,3 +17,17 @@ class CaseResponse(BaseModel):
 class CaseUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+
+class PaginatedCaseResponse(BaseModel):
+    items: List[CaseResponse]
+    page: int
+    page_size: int
+    total: int
+
+class CaseSortFields(str, Enum):
+    title = "title"
+    description = "description"
+
+class SortOrder(str, Enum):
+    asc = "asc"
+    desc = "desc"
