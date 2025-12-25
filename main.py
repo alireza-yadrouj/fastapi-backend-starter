@@ -8,8 +8,6 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm , OAuth2PasswordBearer
 from core.security import pwd_context,  create_access_token , get_current_user
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 app = FastAPI()
 
 @app.get("/cases", response_model=list[CaseResponse])
@@ -24,7 +22,8 @@ def get_cases_endpoint(
     """
     return filter_cases(
         title=title,
-        description=description
+        description=description ,
+        owner_username = current_user
     )
 
 
@@ -33,7 +32,7 @@ def create_case_endpoint(
     case:CaseCreate ,
     current_user: str = Depends(get_current_user)
 ):
-    create_case(case)
+    create_case(case , owner_username=current_user)
     return {"message" : "case created"}
 
 @app.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -41,7 +40,7 @@ def delete_case_endpoint(
     case_id: int,
     current_user: str = Depends(get_current_user)
 ):
-    delete_case_service(case_id)
+    delete_case_service(case_id , owner_username=current_user)
 
 @app.patch("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
 def update_case_endpoint(
@@ -50,11 +49,11 @@ def update_case_endpoint(
     current_user: str = Depends(get_current_user)
 ):
     data = case.dict(exclude_none=True)
-    update_case_service(case_id, data)
+    update_case_service(case_id, current_user, data )
 
 
 
-@app.post("/register", response_model=UserResponse)
+@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate):
     existing_user = get_user_by_username(user.username)
 
@@ -66,7 +65,7 @@ def register(user: UserCreate):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@app.post("/login")
+@app.post("/login", status_code=status.HTTP_200_OK)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # بررسی وجود کاربر
     user = get_user_by_username(form_data.username)

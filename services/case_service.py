@@ -1,9 +1,9 @@
 from fastapi import HTTPException
-from repositories.case_repository import delete_case , update_case , get_all_cases
+from repositories.case_repository import delete_case , update_case , get_cases_by_owner
 
 
-def delete_case_service(case_id: int) -> None:
-    deleted = delete_case(case_id)
+def delete_case_service(case_id: int , owner_username : str) -> None:
+    deleted = delete_case(case_id , owner_username)
     """
     Deletes a case by its ID.
 
@@ -17,8 +17,8 @@ def delete_case_service(case_id: int) -> None:
             detail="Case not found"
         )
 
-def update_case_service(case_id: int, data: dict) -> None:
-    updated = update_case(case_id, data)
+def update_case_service(case_id: int,owner_username : str, data: dict ) -> None:
+    updated = update_case(case_id, data , owner_username)
     """
     Updates a case by its ID.
 
@@ -29,11 +29,12 @@ def update_case_service(case_id: int, data: dict) -> None:
     """
     if not updated:
         raise HTTPException(
-            status_code=404,
-            detail="Case not found or no fields to update"
+            status_code=403,
+            detail="Not allowed or case not found / no fields to update"
         )
 
 def filter_cases(
+        owner_username : str ,
         title:str|None = None , 
         description : str |None = None,
 ):
@@ -45,7 +46,7 @@ def filter_cases(
     :return: list of filtered cases
     """
 
-    cases = get_all_cases()
+    cases = get_cases_by_owner(owner_username)
     
     if title:
         cases = _filter_by_title(cases, title)
