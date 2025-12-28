@@ -37,7 +37,6 @@ def get_cases_endpoint(
         "total": total
     }
      
-
 @app.post("/cases" , status_code=201)
 def create_case_endpoint(
     case:CaseCreate ,

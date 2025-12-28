@@ -6,14 +6,19 @@ def delete_case_service(case_id: int , owner_username : str , role : str) -> Non
     
     if role =="admin":
         deleted = delete_case_admin(case_id)
+        if not deleted :
+            raise HTTPException (status_code=404, detail="Case not found.")
     else:
         deleted = delete_case(case_id , owner_username)
+        if not deleted:
+            raise HTTPException(
+                status_code=403 ,
+                detail="you can delete just your cases."
+            )
+
+
     
-    if not deleted:
-        raise HTTPException(
-            status_code=404 if role != "admin" else 404,
-            detail="Case not found or not allowed."
-        )
+        
 
 def update_case_service(case_id: int,owner_username : str, data: dict, role:str ) -> None:
     if role == "admin":

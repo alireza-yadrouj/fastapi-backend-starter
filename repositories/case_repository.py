@@ -99,7 +99,7 @@ def update_case_admin(case_id:int , data:dict) -> bool:
     values.append(case_id)
 
     query= f"""
-    UPDATE cases set{", ".join(fields)}
+    UPDATE cases set {", ".join(fields)}
     WHERE id =?
     """
 
@@ -108,7 +108,7 @@ def update_case_admin(case_id:int , data:dict) -> bool:
     cursor.execute(query, tuple(values))
     conn.commit()
     updated = cursor.rowcount
-    conn.close
+    conn.close()
 
     return updated > 0
 
