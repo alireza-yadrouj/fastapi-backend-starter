@@ -16,10 +16,6 @@ def delete_case_service(case_id: int , owner_username : str , role : str) -> Non
                 detail="you can delete just your cases."
             )
 
-
-    
-        
-
 def update_case_service(case_id: int,owner_username : str, data: dict, role:str ) -> None:
     if role == "admin":
         updated = update_case_admin(case_id, data)
@@ -65,7 +61,6 @@ def filter_cases(
 
     return paginated_cases , total
 
-
 def _filter_by_title(cases: list, title: str) -> list:
    
     return [
@@ -73,11 +68,13 @@ def _filter_by_title(cases: list, title: str) -> list:
         if title.lower() in case["title"].lower()
     ]
 
-
 def _filter_by_description(cases: list, description: str) -> list:
     
     return [
         case for case in cases
         if description.lower() in case["description"].lower()
     ]
+
+
+
 
