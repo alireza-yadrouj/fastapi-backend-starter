@@ -1,36 +1,25 @@
-from database import get_connection
+from sqlalchemy.orm import Session
+from models.user import User
 from core.security import hash_password
 
 
-def create_user(username: str, password: str , role:str="user"):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    hashed_password = hash_password(password)
-
-    cursor.execute(
-        "INSERT INTO users (username, password, role) VALUES (?, ?,?)",
-        (username, hashed_password,role)
-)
-
-
-    conn.commit()
-    user_id = cursor.lastrowid
-    conn.close()
-    return {"id": user_id, "username": username , "role": role}
-    
-
-
-def get_user_by_username(username: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT id, username, password, role FROM users WHERE username = ?",
-        (username,)
+def create_user(
+    db: Session,
+    username: str,
+    password: str,
+    role: str = "user"
+):
+    user = User(
+        username=username,
+        password=hash_password(password),
+        role=role,
     )
 
-    user = cursor.fetchone()
-    conn.close()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
     return user
+
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()

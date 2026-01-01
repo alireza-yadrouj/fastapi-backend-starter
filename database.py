@@ -1,9 +1,22 @@
-import sqlite3
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
-DB_name = "database.db"
+DATABASE_URL = "postgresql://postgres:1111@localhost:5432/fastapi_cases"
 
-def get_connection():
-    conn = sqlite3.connect(DB_name)
-    conn.row_factory = sqlite3.Row
-    return conn
+engine = create_engine(DATABASE_URL, echo=True, future=True)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 

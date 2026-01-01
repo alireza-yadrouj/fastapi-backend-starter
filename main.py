@@ -1,11 +1,14 @@
 from fastapi import FastAPI , status , Query , HTTPException , Depends
-from repositories.case_repository import create_case 
 from schemas.user import  UserCreate , UserResponse, CurrentUser
 from schemas.case import CaseCreate, CaseUpdate, PaginatedCaseResponse, CaseSortFields, SortOrder
 from services.case_service import delete_case_service , update_case_service , filter_cases
 from repositories.user_repository import get_user_by_username, create_user
 from fastapi.security import OAuth2PasswordRequestForm 
 from core.security import pwd_context,  create_access_token , get_current_user
+from sqlalchemy.orm import Session
+from database import get_db
+from repositories.case_repository import create_case
+
 
 app = FastAPI()
 
@@ -17,13 +20,15 @@ def get_cases_endpoint(
     page_size: int = Query(default=10, ge=1, le=100, description="Number of items per page"),
     sort_by:CaseSortFields = Query(default=CaseSortFields.title),
     sort_order:SortOrder = Query(default=SortOrder.asc),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user),
+    db:Session = Depends(get_db)
 ):
     items, total = filter_cases(
-        title=title,
-        description=description,
+        db=db,
         owner_username=current_user.username,
         role=current_user.role,
+        title=title,
+        description=description,
         page=page,
         page_size=page_size,
         sort_by=sort_by,
@@ -40,54 +45,52 @@ def get_cases_endpoint(
 @app.post("/cases" , status_code=201)
 def create_case_endpoint(
     case:CaseCreate ,
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    create_case(case , owner_username=current_user.username)
-    return {"message" : "case created"}
+    return create_case(db, case.model_dump(), current_user.username)
 
 @app.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_case_endpoint(
     case_id: int,
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     
-    delete_case_service(case_id , current_user.username , current_user.role )
+    delete_case_service(db, case_id , current_user.username , current_user.role )
 
-@app.patch("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.patch("/cases/{case_id}", status_code=status.HTTP_200_OK)
 def update_case_endpoint(
     case_id: int,
     case: CaseUpdate,
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user),
+    db:Session = Depends(get_db)
 ):
     data = case.dict(exclude_none=True)
-    update_case_service(case_id, current_user.username, data, current_user.role )
-
+    return update_case_service(db, case_id, current_user.username, data, current_user.role )
 
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate):
-    existing_user = get_user_by_username(user.username)
+def register(user: UserCreate, db:Session = Depends(get_db)):
+    existing_user = get_user_by_username(db, user.username)
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
     try:
-        return create_user(user.username, user.password , role = user.role)
+        return create_user(db, user.username, user.password , role = user.role)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 @app.post("/login", status_code=status.HTTP_200_OK)
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session=Depends(get_db)):
 
-    # بررسی وجود کاربر
-    user = get_user_by_username(form_data.username)
+    user = get_user_by_username(db, form_data.username)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
-    # بررسی پسورد
-    if not pwd_context.verify(form_data.password, user["password"]):
+    if not pwd_context.verify(form_data.password, user.password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
-    # ساخت توکن
-    access_token = create_access_token(data={"sub": user["username"] , "role":user["role"]})
+    access_token = create_access_token(data={"sub": user.username , "role":user.role})
     return {"access_token": access_token, "token_type": "bearer"}
 

@@ -1,34 +1,36 @@
 from fastapi import HTTPException
 from repositories.case_repository import delete_case, update_case, get_cases_by_owner, delete_case_admin, update_case_admin, get_all_cases
+from models.case import Case
 
-
-def delete_case_service(case_id: int , owner_username : str , role : str) -> None:
+def delete_case_service(db, case_id: int , owner_username : str , role : str) -> dict|None:
     
     if role =="admin":
-        deleted = delete_case_admin(case_id)
+        deleted = delete_case_admin(db, case_id)
         if not deleted :
             raise HTTPException (status_code=404, detail="Case not found.")
     else:
-        deleted = delete_case(case_id , owner_username)
+        deleted = delete_case(db, case_id , owner_username)
         if not deleted:
             raise HTTPException(
                 status_code=403 ,
                 detail="you can delete just your cases."
             )
 
-def update_case_service(case_id: int,owner_username : str, data: dict, role:str ) -> None:
+def update_case_service(db, case_id: int,owner_username : str, data: dict, role:str ) -> None:
     if role == "admin":
-        updated = update_case_admin(case_id, data)
+        updated = update_case_admin(db, case_id, data)
     else:
-        updated = update_case(case_id, data , owner_username)
+        updated = update_case(db, case_id, data , owner_username)
     
     if not updated:
         raise HTTPException(
             status_code=403,
             detail="Not allowed or case not found "
         )
+    return updated
 
 def filter_cases(
+        db,
         owner_username : str ,
         role : str,
         title:str|None = None , 
@@ -40,9 +42,9 @@ def filter_cases(
 ):
     
     if role == "admin":
-        cases = get_all_cases()
+        cases = get_all_cases(db)
     else:
-        cases = get_cases_by_owner(owner_username)
+        cases = get_cases_by_owner(db, owner_username)
     
     if title:                                       #filter by title
         cases = _filter_by_title(cases, title)
@@ -53,7 +55,7 @@ def filter_cases(
     total = len(cases)
 
     if sort_by in ["title", "description"]:          # sort by valid fiels
-        cases.sort(key=lambda x:x.get(sort_by, ""), reverse = (sort_order=="desc"))
+        cases.sort(key=lambda x:getattr(x,sort_by, ""), reverse = (sort_order=="desc"))
 
     start = (page -1)*page_size                      #Apply pagination
     end = start + page_size
@@ -65,14 +67,14 @@ def _filter_by_title(cases: list, title: str) -> list:
    
     return [
         case for case in cases
-        if title.lower() in case["title"].lower()
+        if title.lower() in case.title.lower()
     ]
 
 def _filter_by_description(cases: list, description: str) -> list:
     
     return [
         case for case in cases
-        if description.lower() in case["description"].lower()
+        if description.lower() in case.description.lower()
     ]
 
 

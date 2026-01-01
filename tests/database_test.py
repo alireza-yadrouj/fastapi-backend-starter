@@ -1,34 +1,25 @@
-import sqlite3
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models.base import Base 
+from models.user import User
+from models.case import Case
 
-TEST_DB_NAME = "test_database.db"
 
-def get_test_connection():
-    conn = sqlite3.connect(TEST_DB_NAME)
-    conn.row_factory=sqlite3.Row
-    return conn
+TEST_DB_URL = "postgresql://postgres:1111@localhost:5432/database_test"
 
-#creates tables ( users  and  cases)
+engine = create_engine(TEST_DB_URL, echo=False)
+SessionTest = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_test_session():
+    session = SessionTest()
+    try:
+        yield session
+    finally:
+        session.commit()
+        session.close()
+
 def init_test_db():
-    conn = get_test_connection()
-    cursor = conn.cursor()
+    Base.metadata.create_all(bind=engine)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
-        role TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
-        description TEXT,
-        owner_username TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+def drop_test_db():
+    Base.metadata.drop_all(bind=engine)

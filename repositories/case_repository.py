@@ -1,115 +1,68 @@
-from database import get_connection
-from schemas.case import CaseCreate , CaseResponse , CaseUpdate
+from sqlalchemy.orm import Session
+from models.case import Case
+from schemas.case import CaseCreate
 
+def create_case(db: Session, data:CaseCreate, owner_username: str):
+    case = Case(
+        title=data["title"],
+        description=data["description"],
+        owner_username=owner_username
+    )
+    db.add(case)
+    db.commit()
+    db.refresh(case)
+    return case
 
-def get_all_cases():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM cases")
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+def get_all_cases(db: Session):
+    return db.query(Case).all()
 
-def get_cases_by_owner(owner_username: str) -> list[CaseResponse]:
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = "SELECT * FROM cases WHERE owner_username = ?"
-    cursor.execute(query , (owner_username,))
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row)for row in rows]
+def get_cases_by_owner(db: Session, owner_username: str):
+    return db.query(Case).filter(Case.owner_username == owner_username).all()
 
-def create_case(case:CaseCreate , owner_username:str) -> None:
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-    INSERT INTO cases (title, description, owner_username)
-    VALUES (?,?,?) 
-    """
-    cursor.execute(query, (case.title, case.description, owner_username))
-    conn.commit()
-    conn.close()
+def update_case(db: Session, case_id: int, update_data: dict, owner_username: str) -> Case | None:
+    case = db.query(Case).filter(
+        Case.id == case_id,
+        Case.owner_username == owner_username
+    ).first()
+    if not case:
+        return None
 
-def delete_case(case_id: int , owner_username: str) -> bool:
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-    DELETE FROM cases WHERE id = ? AND owner_username = ?
-    """
-    cursor.execute(query , (case_id , owner_username))
-    conn.commit()
-    deleted = cursor.rowcount
-    conn.close()
+    for key, value in update_data.items():
+        setattr(case, key, value)
 
-    return deleted > 0
+    db.commit()
+    db.refresh(case)
+    return case
 
-def update_case(case_id: int, data: CaseUpdate , owner_username) -> bool:
-    if not data:
+def delete_case(db: Session, case_id: int, owner_username: str) -> bool:
+    case = db.query(Case).filter(
+        Case.id == case_id,
+        Case.owner_username == owner_username
+    ).first()
+    if not case:
         return False
 
-    fields = []
-    values = []
+    db.delete(case)
+    db.commit()
+    return True
 
+def delete_case_admin(db:Session, case_id:int ) -> bool:
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        return False
+    
+    db.delete(case)
+    db.commit()
+    return True
+
+def update_case_admin(db:Session, case_id: int, data: dict) -> Case | None:
+    case = db.query(Case).filter(Case.id==case_id).first()
+    if not case:
+        return None
     for key, value in data.items():
-        fields.append(f"{key} = ?")
-        values.append(value)
+        setattr(case, key, value)
 
-    values.append(case_id)
-    values.append(owner_username)
-
-    query = f"""
-    UPDATE cases
-    SET {", ".join(fields)}
-    WHERE id = ? AND owner_username = ?
-    """
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(query, tuple(values))
-    conn.commit()
-
-    updated = cursor.rowcount
-
-    conn.close()
-
-    return updated > 0
-
-def delete_case_admin(case_id) -> bool :
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM cases WHERE id =?", (case_id,))
-    conn.commit()
-    deleted = cursor.rowcount
-    conn.close()
-    return deleted > 0
-
-def update_case_admin(case_id:int , data:dict) -> bool:
-    
-    if not data:
-        return False
-    
-    fields=[]
-    values=[]
-
-    for key,value in data.items():
-        fields.append(f"{key}=?")
-        values.append(value)
-
-    values.append(case_id)
-
-    query= f"""
-    UPDATE cases set {", ".join(fields)}
-    WHERE id =?
-    """
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, tuple(values))
-    conn.commit()
-    updated = cursor.rowcount
-    conn.close()
-
-    return updated > 0
-
+    db.commit()
+    db.refresh(case)
+    return case
 
